@@ -6,9 +6,6 @@ go:
 env:
   - GO111MODULE=on
 
-services:
-  - mongodb
-
 matrix:
   fast_finish: true
 
