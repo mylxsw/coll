@@ -20,8 +20,9 @@ var testMapData = map[string]string{
 }
 
 type Element struct {
-	ID   int
-	Name string
+	ID     int
+	Name   string
+	Gender string
 }
 
 type Element2 struct {
@@ -360,5 +361,29 @@ func TestPointerToMap(t *testing.T) {
 
 	for k, v := range element2s {
 		fmt.Printf("type=%s, k=%s, id=%d, name=%s, age=%d\n", reflect.TypeOf(v).Kind(), k, v.ID, v.Name, v.Age)
+	}
+}
+
+func TestGroupByForArray(t *testing.T) {
+	col := coll.MustNew([]*Element{
+		{ID: 11, Name: "guan", Gender: "boy"},
+		{ID: 12, Name: "yi", Gender: "boy"},
+		{ID: 13, Name: "yao", Gender: "girl"},
+		{ID: 15, Name: "a", Gender: "girl"},
+		{ID: 18, Name: "b", Gender: "boy"},
+		{ID: 23, Name: "c", Gender: "girl"},
+		{ID: 24, Name: "dd", Gender: "girl"},
+		{ID: 26, Name: "e", Gender: "girl"},
+	})
+
+	var element2s map[interface{}][]interface{}
+	if err := col.GroupBy(func(ele *Element) string {
+		return ele.Gender
+	}).All(&element2s); err != nil {
+		t.Errorf("test failed: %v", err)
+	}
+
+	for k, v := range element2s {
+		fmt.Printf("key=%v, value=%v\n", k, v)
 	}
 }

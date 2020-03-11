@@ -86,6 +86,49 @@ func MustNew(data interface{}) *Collection {
 	return res
 }
 
+// GroupBy iterates over elements of collection, grouping all elements by specified conditions
+// groupFunc(interface{}) interface{}
+// groupFunc(interface{}, int) interface{}
+// Remember: the result of All must be type: map[interface{}][]interface{}
+func (collection *Collection) GroupBy(groupFunc interface{}) *Collection {
+	if !IsFunction(groupFunc, []int{1, 1}, []int{2, 1}) {
+		panic("invalid callback function")
+	}
+
+	groupFuncValue := reflect.ValueOf(groupFunc)
+	groupFuncType := groupFuncValue.Type()
+	argumentCount := groupFuncType.NumIn()
+
+	if collection.isMapType() {
+		results := make(map[interface{}][]interface{})
+		for key, value := range collection.dataMap {
+			arguments := []reflect.Value{reflect.ValueOf(value), reflect.ValueOf(key)}
+			groupID := groupFuncValue.Call(arguments[0:argumentCount])[0].Interface()
+
+			if _, ok := results[groupID]; !ok {
+				results[groupID] = make([]interface{}, 0)
+			}
+
+			results[groupID] = append(results[groupID], value)
+		}
+
+		return MustNew(results)
+	}
+
+	results := make(map[interface{}][]interface{})
+	for index, item := range collection.dataArray {
+		groupID := groupFuncValue.Call([]reflect.Value{reflect.ValueOf(item), reflect.ValueOf(index)}[0:argumentCount])[0].Interface()
+
+		if _, ok := results[groupID]; !ok {
+			results[groupID] = make([]interface{}, 0)
+		}
+
+		results[groupID] = append(results[groupID], item)
+	}
+
+	return MustNew(results)
+}
+
 // Filter iterates over elements of collection, return all element meet the needs
 // filter(interface{}) bool
 // filter(interface{}, int) bool
