@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 var (
@@ -84,6 +85,177 @@ func MustNew(data interface{}) *Collection {
 	}
 
 	return res
+}
+
+// Sort sort collection with orderBy function, only support array collection
+//     compareFunc(val1 interface{}, val2 interface{}) bool
+func (collection *Collection) Sort(compareFunc interface{}) *Collection {
+	if collection.isMapType() {
+		panic("map not support sort")
+	}
+
+	if !IsFunction(compareFunc, []int{2, 1}) {
+		panic("invalid callback function")
+	}
+
+	orderByFuncValue := reflect.ValueOf(compareFunc)
+	if orderByFuncValue.Type().Out(0).Kind() != reflect.Bool {
+		panic("the return type for compareFunc must be a bool value")
+	}
+
+	sortItems := make(sortStructs, len(collection.dataArray))
+	for i, v := range collection.dataArray {
+		sortItems[i] = sortStruct{
+			Compare: func(v1, v2 interface{}) bool {
+				arguments := []reflect.Value{reflect.ValueOf(v1), reflect.ValueOf(v2)}
+				return orderByFuncValue.Call(arguments)[0].Bool()
+			},
+			Value: v,
+		}
+	}
+
+	sort.Sort(sortItems)
+
+	results := make([]interface{}, len(sortItems))
+	for i, v := range sortItems {
+		results[i] = v.Value
+	}
+
+	return MustNew(results)
+}
+
+type sortStruct struct {
+	Compare func(v1, v2 interface{}) bool
+	Value   interface{}
+}
+
+type sortStructs []sortStruct
+
+func (s sortStructs) Len() int {
+	return len(s)
+}
+
+func (s sortStructs) Less(i, j int) bool {
+	return s[i].Compare(s[i].Value, s[j].Value)
+}
+
+func (s sortStructs) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+// AsArray convert the collection to an array collection
+// Remember: the underlying data type is changed to []interface{}
+func (collection *Collection) AsArray() *Collection {
+	if collection.isMapType() {
+		results := make([]interface{}, len(collection.dataMap))
+		i := 0
+		for _, value := range collection.dataMap {
+			results[i] = value
+			i++
+		}
+
+		return MustNew(results)
+	}
+
+	results := make([]interface{}, len(collection.dataArray))
+	for i, value := range collection.dataArray {
+		results[i] = value
+	}
+
+	return MustNew(results)
+}
+
+// AsMap convert collection to a map collection
+//     keyFunc(value interface{}) interface{}
+//     keyFunc(value interface{}, key interface{}) interface{}
+// Remember: the underlying data type is changed to map[interface{}]interface{}
+func (collection *Collection) AsMap(keyFunc interface{}) *Collection {
+	if !IsFunction(keyFunc, []int{1, 1}, []int{2, 1}) {
+		panic("invalid callback function")
+	}
+
+	keyFuncValue := reflect.ValueOf(keyFunc)
+	keyFuncType := keyFuncValue.Type()
+	argumentCount := keyFuncType.NumIn()
+
+	if collection.isMapType() {
+		results := make(map[interface{}]interface{})
+		for key, value := range collection.dataMap {
+			arguments := []reflect.Value{reflect.ValueOf(value), reflect.ValueOf(key)}
+			uniqID := keyFuncValue.Call(arguments[0:argumentCount])[0].Interface()
+
+			if _, ok := results[uniqID]; ok {
+				continue
+			}
+
+			results[uniqID] = value
+		}
+
+		return MustNew(results)
+	}
+
+	results := make(map[interface{}]interface{})
+	for index, item := range collection.dataArray {
+		uniqID := keyFuncValue.Call([]reflect.Value{reflect.ValueOf(item), reflect.ValueOf(index)}[0:argumentCount])[0].Interface()
+
+		if _, ok := results[uniqID]; ok {
+			continue
+		}
+
+		results[uniqID] = item
+	}
+
+	return MustNew(results)
+}
+
+// Unique remove duplicated elements from collection
+//     uniqFunc(value interface{}) interface{}
+//     uniqFunc(value interface{}, key interface{}) interface{}
+// Remember: the return collection type is map[interface{}]interface{} for map, []interface{} for array or slices
+func (collection *Collection) Unique(uniqFunc interface{}) *Collection {
+	if !IsFunction(uniqFunc, []int{1, 1}, []int{2, 1}) {
+		panic("invalid callback function")
+	}
+
+	uniqFuncValue := reflect.ValueOf(uniqFunc)
+	uniqFuncType := uniqFuncValue.Type()
+	argumentCount := uniqFuncType.NumIn()
+
+	if collection.isMapType() {
+		results := make(map[interface{}]interface{})
+		for key, value := range collection.dataMap {
+			arguments := []reflect.Value{reflect.ValueOf(value), reflect.ValueOf(key)}
+			uniqID := uniqFuncValue.Call(arguments[0:argumentCount])[0].Interface()
+
+			if _, ok := results[uniqID]; ok {
+				continue
+			}
+
+			results[uniqID] = value
+		}
+
+		return MustNew(results)
+	}
+
+	results := make(map[interface{}]interface{})
+	for index, item := range collection.dataArray {
+		uniqID := uniqFuncValue.Call([]reflect.Value{reflect.ValueOf(item), reflect.ValueOf(index)}[0:argumentCount])[0].Interface()
+
+		if _, ok := results[uniqID]; ok {
+			continue
+		}
+
+		results[uniqID] = item
+	}
+
+	resultsArr := make([]interface{}, len(results))
+	i := 0
+	for _, r := range results {
+		resultsArr[i] = r
+		i++
+	}
+
+	return MustNew(resultsArr)
 }
 
 // GroupBy iterates over elements of collection, grouping all elements by specified conditions
@@ -276,7 +448,7 @@ func (collection *Collection) toMap(result interface{}) error {
 
 func (collection *Collection) ToArray() ([]interface{}, error) {
 	if collection.isMapType() {
-		return nil, fmt.Errorf("collection is a map")
+		return collection.AsArray().ToArray()
 	}
 
 	var res []interface{}

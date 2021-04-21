@@ -6,6 +6,10 @@ import (
 	"unsafe"
 )
 
+func Unique(origin interface{}, dest interface{}, uniquer interface{}) error {
+	return MustNew(origin).Unique(uniquer).All(dest)
+}
+
 func Map(origin interface{}, dest interface{}, mapper interface{}) error {
 	return MustNew(origin).Map(mapper).All(dest)
 }

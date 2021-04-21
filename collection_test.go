@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/mylxsw/coll"
+	"github.com/stretchr/testify/assert"
 )
 
 var testMapData = map[string]string{
@@ -383,7 +384,113 @@ func TestGroupByForArray(t *testing.T) {
 		t.Errorf("test failed: %v", err)
 	}
 
-	for k, v := range element2s {
-		fmt.Printf("key=%v, value=%v\n", k, v)
+	assert.Equal(t, 3, len(element2s["boy"]))
+	assert.Equal(t, 5, len(element2s["girl"]))
+}
+
+func TestUniqueForArray(t *testing.T) {
+	col := coll.MustNew([]*Element{
+		{ID: 11, Name: "guan", Gender: "boy"},
+		{ID: 12, Name: "yi", Gender: "boy"},
+		{ID: 13, Name: "yao", Gender: "girl"},
+		{ID: 15, Name: "a", Gender: "girl"},
+		{ID: 18, Name: "b", Gender: "boy"},
+		{ID: 23, Name: "c", Gender: "girl"},
+		{ID: 24, Name: "dd", Gender: "girl"},
+		{ID: 26, Name: "e", Gender: "girl"},
+	})
+
+	var rs []interface{}
+	assert.NoError(t, col.Unique(func(ele *Element) string { return ele.Gender }).All(&rs))
+	assert.Equal(t, 2, len(rs))
+}
+
+func TestUniqueForMap(t *testing.T) {
+	col := coll.MustNew(map[string]Element{
+		"a11":  {ID: 11, Name: "guan", Gender: "boy"},
+		"1dc2": {ID: 12, Name: "yi", Gender: "boy"},
+		"313":  {ID: 13, Name: "yao", Gender: "girl"},
+		"c14":  {ID: 15, Name: "a", Gender: "girl"},
+		"1ff5": {ID: 18, Name: "ee", Gender: "boy"},
+		"16":   {ID: 23, Name: "c", Gender: "girl"},
+		"1ag7": {ID: 24, Name: "yao", Gender: "girl"},
+		"189":  {ID: 26, Name: "ee", Gender: "girl"},
+	})
+
+	var rs map[string]interface{}
+	assert.NoError(t, col.Unique(func(ele Element) string { return ele.Name }).All(&rs))
+	assert.Equal(t, 6, len(rs))
+	for k, val := range rs {
+		fmt.Printf("%s - %v\n", k, val)
 	}
+}
+
+func TestAsMap(t *testing.T) {
+	col := coll.MustNew([]*Element{
+		{ID: 11, Name: "guan", Gender: "boy"},
+		{ID: 12, Name: "yi", Gender: "boy"},
+		{ID: 13, Name: "yao", Gender: "girl"},
+		{ID: 15, Name: "a", Gender: "girl"},
+		{ID: 18, Name: "b", Gender: "boy"},
+		{ID: 23, Name: "c", Gender: "girl"},
+		{ID: 24, Name: "dd", Gender: "girl"},
+		{ID: 26, Name: "e", Gender: "girl"},
+	})
+
+	var rs map[string]interface{}
+	assert.NoError(t, col.AsMap(func(ele *Element) string { return ele.Name }).All(&rs))
+	assert.Equal(t, 8, len(rs))
+
+	for k, val := range rs {
+		fmt.Printf("key=%s, value=%v\n", k, val)
+	}
+}
+
+func TestAsArray(t *testing.T) {
+	col := coll.MustNew(map[string]Element{
+		"a11":  {ID: 11, Name: "guan", Gender: "boy"},
+		"1dc2": {ID: 12, Name: "yi", Gender: "boy"},
+		"313":  {ID: 13, Name: "yao", Gender: "girl"},
+		"c14":  {ID: 15, Name: "a", Gender: "girl"},
+		"1ff5": {ID: 18, Name: "ee", Gender: "boy"},
+		"16":   {ID: 23, Name: "c", Gender: "girl"},
+		"1ag7": {ID: 24, Name: "yao", Gender: "girl"},
+		"189":  {ID: 26, Name: "ee", Gender: "girl"},
+	})
+
+	{
+		var rs []interface{}
+		assert.NoError(t, col.AsArray().All(&rs))
+		assert.Equal(t, 8, len(rs))
+		for i, v := range rs {
+			fmt.Printf("%d - %v\n", i, v)
+		}
+	}
+
+	{
+		rs, err := col.ToArray()
+		assert.NoError(t, err)
+		for i, v := range rs {
+			fmt.Printf("%d - %v\n", i, v)
+		}
+	}
+}
+
+func TestOrderBy(t *testing.T) {
+	col := coll.MustNew([]*Element{
+		{ID: 23, Name: "c", Gender: "girl"},
+		{ID: 11, Name: "guan", Gender: "boy"},
+		{ID: 12, Name: "yi", Gender: "boy"},
+		{ID: 26, Name: "e", Gender: "girl"},
+		{ID: 15, Name: "a", Gender: "girl"},
+		{ID: 18, Name: "b", Gender: "boy"},
+		{ID: 13, Name: "yao", Gender: "girl"},
+		{ID: 24, Name: "dd", Gender: "girl"},
+	})
+
+	col.Sort(func(val1 *Element, val2 *Element) bool {
+		return val1.ID < val2.ID
+	}).Each(func(val *Element) {
+		fmt.Printf("%d - %v\n", val.ID, val)
+	})
 }
