@@ -61,7 +61,6 @@ func TestFilter(t *testing.T) {
 	}
 }
 
-
 type UserDomain struct {
 	ID           int64
 	Name         string
@@ -133,6 +132,11 @@ func TestCopyProperties(t *testing.T) {
 		assert.Equal(t, userDomain.Email, targetUserView.Email)
 		assert.Equal(t, false, targetUserView.Gender)
 		assert.Equal(t, false, targetUserView.HasPermission)
+
+		var target1, target2 UserView
+		assert.NoError(t, coll.CopyProperties(userDomain, &target1, &target2))
+		assert.Equal(t, userDomain.ID, target1.ID)
+		assert.Equal(t, userDomain.ID, target2.ID)
 	}
 
 	{

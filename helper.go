@@ -23,39 +23,42 @@ var ErrTargetInvalid = errors.New("target must be a pointer to struct")
 
 // CopyProperties copy exported properties(with same name and type) from source to target
 // target must be a pointer to struct
-func CopyProperties(source interface{}, target interface{}) error {
+func CopyProperties(source interface{}, targets ...interface{}) error {
 	sourceRefVal := reflect.Indirect(reflect.ValueOf(source))
-	targetRefVal := reflect.ValueOf(target)
-
 	// 如果 source 为 null，则不需要拷贝任何属性
 	if !sourceRefVal.IsValid() {
 		return nil
 	}
 
-	if !targetRefVal.IsValid() {
-		return ErrTargetIsNil
-	}
+	for _, target := range targets {
+		targetRefVal := reflect.ValueOf(target)
 
-	if targetRefVal.Kind() != reflect.Ptr {
-		return ErrTargetInvalid
-	}
-
-	targetVal := targetRefVal.Elem()
-	targetType := targetVal.Type()
-
-	for i := 0; i < targetType.NumField(); i++ {
-		field := targetType.Field(i)
-		fieldName := field.Name
-		if fieldName[0] < 'A' || fieldName[0] > 'Z' {
-			continue
+		if !targetRefVal.IsValid() {
+			return ErrTargetIsNil
 		}
 
-		dst := sourceRefVal.FieldByName(fieldName)
-		if !dst.IsValid() || field.Type != dst.Type() {
-			continue
+		if targetRefVal.Kind() != reflect.Ptr {
+			return ErrTargetInvalid
 		}
 
-		reflect.NewAt(field.Type, unsafe.Pointer(targetVal.Field(i).UnsafeAddr())).Elem().Set(dst)
+		targetVal := targetRefVal.Elem()
+		targetType := targetVal.Type()
+
+		for i := 0; i < targetType.NumField(); i++ {
+			field := targetType.Field(i)
+			fieldName := field.Name
+			if fieldName[0] < 'A' || fieldName[0] > 'Z' {
+				continue
+			}
+
+			dst := sourceRefVal.FieldByName(fieldName)
+			if !dst.IsValid() || field.Type != dst.Type() {
+				continue
+			}
+
+			reflect.NewAt(field.Type, unsafe.Pointer(targetVal.Field(i).UnsafeAddr())).Elem().Set(dst)
+		}
+
 	}
 
 	return nil
