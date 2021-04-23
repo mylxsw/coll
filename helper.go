@@ -6,16 +6,30 @@ import (
 	"unsafe"
 )
 
-func Unique(origin interface{}, dest interface{}, uniquer interface{}) error {
-	return MustNew(origin).Unique(uniquer).All(dest)
+func Unique(origin interface{}, dest interface{}, uniquers ...interface{}) error {
+	c := MustNew(origin)
+	for _, m := range uniquers {
+		c = c.Unique(m)
+	}
+
+	return c.All(dest)
 }
 
-func Map(origin interface{}, dest interface{}, mapper interface{}) error {
-	return MustNew(origin).Map(mapper).All(dest)
+func Map(origin interface{}, dest interface{}, mappers ...interface{}) error {
+	c := MustNew(origin)
+	for _, m := range mappers {
+		c = c.Map(m)
+	}
+
+	return c.All(dest)
 }
 
-func Filter(origin interface{}, dest interface{}, filter interface{}) error {
-	return MustNew(origin).Filter(filter).All(dest)
+func Filter(origin interface{}, dest interface{}, filters ...interface{}) error {
+	c := MustNew(origin)
+	for _, f := range filters {
+		c = c.Filter(f)
+	}
+	return c.All(dest)
 }
 
 var ErrTargetIsNil = errors.New("target is nil")
