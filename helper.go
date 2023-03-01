@@ -35,6 +35,11 @@ func Filter(origin interface{}, dest interface{}, filters ...interface{}) error 
 var ErrTargetIsNil = errors.New("target is nil")
 var ErrTargetInvalid = errors.New("target must be a pointer to struct")
 
+// Copy alias of CopyProperties
+func Copy(source interface{}, targets ...interface{}) error {
+	return CopyProperties(source, targets...)
+}
+
 // CopyProperties copy exported properties(with same name and type) from source to target
 // target must be a pointer to struct
 func CopyProperties(source interface{}, targets ...interface{}) error {
